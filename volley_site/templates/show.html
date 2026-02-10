@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="kk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Волейбол — Көрсетілім</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="brand-title">VOLLEY SCORE</div>
+        <div class="brand-sub">Көрермендерге арналған табло</div>
+      </div>
+    </div>
+
+    <div class="admin-mini" id="admin-login">
+      <div class="mini-title">Админ кіру</div>
+      <form class="mini-form" method="post" action="{{ url_for('login') }}">
+        <input name="username" placeholder="Логин" autocomplete="username">
+        <input name="password" type="password" placeholder="Құпиясөз" autocomplete="current-password">
+
+        <button class="btn" type="submit">Кіру</button>
+      </form>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="flash {{cat}}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="card-title">Командалар кестесі (Рейтинг)</div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Орын</th>
+              <th>Команда</th>
+              <th>Жеңіс</th>
+              <th>Ұпай</th>
+              <th>Рейтинг</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in standings %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td class="team-cell">
+                <button class="linklike" type="button" data-toggle="team-{{row.id}}">
+                  {{ row.name }}
+                </button>
+              </td>
+              <td>{{ row.wins }}</td>
+              <td>{{ row.points }}</td>
+              <td><span class="badge">{{ row.rating }}</span></td>
+            </tr>
+            <tr class="expand-row" id="team-{{row.id}}">
+              <td colspan="5">
+                <div class="expand-box">
+                  <div class="expand-title">Ойыншылар (6 алаңда, 2 ауыстыру)</div>
+                  <div class="players-grid">
+                    {% for p in players_by_team[row.id] %}
+                      <div class="player {{ 'active' if p.is_active==1 else 'bench' }}">
+                        <div class="p-num">#{{ p.number }}</div>
+                        <div class="p-name">{{ p.name }}</div>
+                        <div class="p-state">{{ 'Алаңда' if p.is_active==1 else 'Ауыстыру' }}</div>
+                      </div>
+                    {% else %}
+                      <div class="muted">Ойыншы жоқ.</div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="hint">Команда атауын бассаң — тізім ашылады (жаңа бет ашылмайды).</div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Турнирлік ағаш</div>
+
+      <div class="bracket">
+        {% for rc, matches in matches_by_round.items() %}
+          <div class="round">
+            <div class="round-title">{{ get_round_title(rc) }}</div>
+
+            {% if matches|length == 0 %}
+              <div class="muted small">Бұл раундта матч жоқ. (Админ панельден қосуға болады.)</div>
+            {% endif %}
+
+            {% for m in matches %}
+              {% set a_lost = (m.team_a_id in losers_map) and (m.winner_id is not none) and (m.winner_id != m.team_a_id) %}
+              {% set b_lost = (m.team_b_id in losers_map) and (m.winner_id is not none) and (m.winner_id != m.team_b_id) %}
+
+              <div class="match">
+                <div class="side {{ 'lost' if a_lost else '' }}">
+                  <div class="tname">
+                    {{ m.team_a_name if m.team_a_name else '—' }}
+                    {% if a_lost %}<span class="lost-tag">Ұтылды</span>{% endif %}
+                  </div>
+                  <div class="tscore">{{ m.score_a }}</div>
+                </div>
+
+                <div class="vs">VS</div>
+
+                <div class="side {{ 'lost' if b_lost else '' }}">
+                  <div class="tname">
+                    {{ m.team_b_name if m.team_b_name else '—' }}
+                    {% if b_lost %}<span class="lost-tag">Ұтылды</span>{% endif %}
+                  </div>
+                  <div class="tscore">{{ m.score_b }}</div>
+                </div>
+
+                <div class="winner">
+                  Жеңімпаз:
+                  <span class="badge">
+                    {% if m.winner_id %}
+                      {% if m.winner_id == m.team_a_id %}{{ m.team_a_name }}{% else %}{{ m.team_b_name }}{% endif %}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="line"></div>
+    <div class="muted small">© Volley Score — қара/қызыл тақырып</div>
+  </footer>
+
+  <script>
+    // accordion toggles without new page
+    document.querySelectorAll("[data-toggle]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-toggle");
+        const row = document.getElementById(id);
+        if (!row) return;
+        row.classList.toggle("open");
+      });
+    });
+  </script>
+</body>
+</html>
