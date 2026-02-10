@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="kk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Админ панель — Волейбол</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="brand-title">VOLLEY SCORE</div>
+        <div class="brand-sub">Админ панель</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <a class="btn ghost" href="{{ url_for('show') }}">Show беті</a>
+      <a class="btn danger" href="{{ url_for('logout') }}">Шығу</a>
+    </div>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <section class="card">
+          {% for cat, msg in messages %}
+            <div class="flash {{cat}}">{{ msg }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+    {% endwith %}
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-title">Команда қосу</div>
+        <form method="post" action="{{ url_for('admin_team_add') }}" class="form">
+          <label>Команда атауы</label>
+          <input name="team_name" placeholder="Мысалы: Арыстан">
+          <button class="btn" type="submit">Қосу</button>
+        </form>
+
+        <div class="hint">Команда саны шексіз.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Ұпай енгізу</div>
+        <form method="post" action="{{ url_for('admin_team_points') }}" class="form">
+          <label>Команда</label>
+          <select name="team_id">
+            {% for t in teams %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <label>Ұпай</label>
+          <input name="points" type="number" value="0">
+          <button class="btn" type="submit">Сақтау</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Ойыншылар (8 адам: 6 алаңда, 2 ауыстыру)</div>
+
+      <div class="team-blocks">
+        {% for t in teams %}
+        <div class="team-block">
+          <div class="team-head">
+            <div class="team-name">{{ t.name }}</div>
+            <div class="team-meta"><span class="badge">Ұпай: {{ t.points }}</span></div>
+          </div>
+
+          <div class="subgrid">
+            <form method="post" action="{{ url_for('admin_player_add') }}" class="form inline">
+              <input type="hidden" name="team_id" value="{{ t.id }}">
+              <input name="player_name" placeholder="Ойыншы аты">
+              <input name="player_number" type="number" placeholder="№" min="0">
+              <button class="btn" type="submit">Ойыншы қосу</button>
+            </form>
+          </div>
+
+          <div class="players-grid">
+            {% for p in players_by_team[t.id] %}
+              <div class="player admin {{ 'active' if p.is_active==1 else 'bench' }}">
+                <div class="p-num">#{{ p.number }}</div>
+                <div class="p-name">{{ p.name }}</div>
+                <div class="p-state">{{ 'Алаңда' if p.is_active==1 else 'Ауыстыру' }}</div>
+
+                <form method="post" action="{{ url_for('admin_player_toggle') }}">
+                  <input type="hidden" name="player_id" value="{{ p.id }}">
+                  <input type="hidden" name="team_id" value="{{ t.id }}">
+                  <button class="btn small" type="submit">
+                    {% if p.is_active==1 %}Ауыстыруға{% else %}Алаңға{% endif %}
+                  </button>
+                </form>
+              </div>
+            {% else %}
+              <div class="muted">Ойыншы жоқ.</div>
+            {% endfor %}
+          </div>
+
+          <div class="hint small">
+            Ереже: Алаңда максимум 6 ойыншы. (Артық болса — ауыстыруға шығар.)
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Турнир матчтары (ағаш)</div>
+
+      <form method="post" action="{{ url_for('admin_match_upsert') }}" class="form">
+        <div class="grid-4">
+          <div>
+            <label>Раунд</label>
+            <select name="round">
+              <option value="R16">1/8 финал</option>
+              <option value="QF">1/4 финал</option>
+              <option value="SF">1/2 жартылай финал</option>
+              <option value="F">Финал</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Slot (орын)</label>
+            <input name="slot" type="number" value="1" min="1">
+          </div>
+
+          <div>
+            <label>A команда</label>
+            <select name="team_a_id">
+              <option value="">—</option>
+              {% for t in teams %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label>B команда</label>
+            <select name="team_b_id">
+              <option value="">—</option>
+              {% for t in teams %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label>A ұпай</label>
+            <input name="score_a" type="number" value="0" min="0">
+          </div>
+
+          <div>
+            <label>B ұпай</label>
+            <input name="score_b" type="number" value="0" min="0">
+          </div>
+
+          <div class="span-2">
+            <button class="btn" type="submit">Матчты сақтау / жаңарту</button>
+          </div>
+        </div>
+
+        <div class="hint small">
+          Winner автоматты: ұпай көп болса — жеңімпаз. Тең болса — жеңімпаз жоқ.
+        </div>
+      </form>
+
+      <div class="divider"></div>
+
+      <div class="bracket admin-view">
+        {% for rc, matches in matches_by_round.items() %}
+          <div class="round">
+            <div class="round-title">{{ get_round_title(rc) }}</div>
+            {% if matches|length == 0 %}
+              <div class="muted small">Матч жоқ.</div>
+            {% endif %}
+            {% for m in matches %}
+              <div class="match compact">
+                <div class="muted small">Slot: {{ m.slot }}</div>
+                <div class="row">
+                  <span class="badge">{{ m.team_a_name if m.team_a_name else '—' }}</span>
+                  <span class="score">{{ m.score_a }}</span>
+                  <span class="muted">:</span>
+                  <span class="score">{{ m.score_b }}</span>
+                  <span class="badge">{{ m.team_b_name if m.team_b_name else '—' }}</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="line"></div>
+    <div class="muted small">Админ панель — тек Show беті арқылы кіру.</div>
+  </footer>
+</body>
+</html>
